@@ -5,6 +5,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.View;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -18,8 +19,10 @@ public class MainActivity extends AppCompatActivity {
 
         final EditText commandEt = (EditText) findViewById(R.id.et_shell_command);
         final TextView resultTv = (TextView) findViewById(R.id.tv_result);
+        Button executeBtn = (Button) findViewById(R.id.btn_execute);
 
-        findViewById(R.id.btn_execute).setOnClickListener(new View.OnClickListener() {
+        // 点击执行命令
+        executeBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 String commandContent = commandEt.getText().toString();
@@ -51,7 +54,8 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        findViewById(R.id.btn_execute).setOnLongClickListener(new View.OnLongClickListener() {
+        // 长按终止ROOT权限
+        executeBtn.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
                 new AsyncTask<Void, Void, Void>() {
