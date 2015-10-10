@@ -21,17 +21,20 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class RootShell {
+    public static final int GET_ROOT = 0; // 获取到ROOT权限
+    public static final int USER_DENIED = 1001; // 用户拒绝授予ROOT权限
+    public static final int GRANT_ROOT_TIMEOUT = 1002; // 获取ROOT权限超时
+
+    private static final int MAX_WAIT_TIME = 30; // s
+    private static final int MAX_COMMAND_COUNT = 10;
+
     private static final String TAG = "RootShell";
 
     private volatile static RootShell sInstance;
-
     private static ExecutorService THREAD_POOL = Executors.newCachedThreadPool();
-    private static AtomicBoolean sStarted = new AtomicBoolean(false);
 
-    public static final int GET_ROOT = 0;
-    public static final int USER_DENIED = 1001;
-    public static final int GRANT_ROOT_TIMEOUT = 1002;
     private int mStatusCode = GET_ROOT;
+    private AtomicBoolean mStarted = new AtomicBoolean(false);
 
     private Process mProcess;
     private BufferedReader mCommandReader;
@@ -52,7 +55,7 @@ public final class RootShell {
     }
 
     private RootShell() {
-        mCommandBlockingQueue = new ArrayBlockingQueue<>(ShellConst.MAX_COMMAND_COUNT);
+        mCommandBlockingQueue = new ArrayBlockingQueue<>(MAX_COMMAND_COUNT);
         startRoot();
     }
 
@@ -73,10 +76,10 @@ public final class RootShell {
             RootValidationTask task = RootValidationTask.newTask(mCommandReader, mCommandWriter);
             Future<Integer> future = THREAD_POOL.submit(task);
             try {
-                Integer result = future.get(ShellConst.MAX_WAIT_TIME, TimeUnit.SECONDS);
+                Integer result = future.get(MAX_WAIT_TIME, TimeUnit.SECONDS);
                 if (result != null && result == RootValidationTask.RESULT_OK) {
                     Log.d(TAG, "has access ROOT permission");
-                    sStarted.getAndSet(true);
+                    mStarted.getAndSet(true);
                     // 有oot权限则开启读写命令线程
                     startCommandExecutionThreads();
                     return true;
@@ -100,8 +103,8 @@ public final class RootShell {
     /**
      * 终止root
      */
-    public static void terminal() {
-        if (sInstance != null && sStarted.getAndSet(false)) {
+    public void terminal() {
+        if (sInstance != null && mStarted.getAndSet(false)) {
             new Command("exit 0").execute(); // 保证命令队列中的命令都执行完成
             sInstance.mCommandExecutorThread.interrupt();
             try {
@@ -125,10 +128,10 @@ public final class RootShell {
 
     /**
      * 入队命令
-     * @param commands 一个或多个命令
+     * @param commands
      */
     public int enqueueCommands(Command... commands) {
-        if (sStarted.get()) {
+        if (mStarted.get()) {
             for (Command command : commands) {
                 if (command != null) {
                     try {
@@ -150,7 +153,7 @@ public final class RootShell {
 
         @Override
         public void run() {
-            while (sStarted.get()) {
+            while (mStarted.get()) {
                 try {
                     // 1.取出命令
                     Command command = mCommandBlockingQueue.take();
@@ -163,7 +166,7 @@ public final class RootShell {
                     String line;
                     while ((line = mCommandReader.readLine()) != null) {
                         Log.d(TAG, "Output: " + line);
-                        int tokenIndex = line.indexOf(ShellConst.CMD_TOKEN);
+                        int tokenIndex = line.indexOf(Command.CMD_TOKEN);
                         if (tokenIndex >= 0) {
                             line = line.substring(tokenIndex);
                             String fields[] = line.split(" ");

@@ -58,7 +58,7 @@ public class MainActivity extends AppCompatActivity {
 
                     @Override
                     protected Void doInBackground(Void... params) {
-                        RootShell.terminal();
+                        RootShell.getInstance().terminal();
                         return null;
                     }
 

@@ -2,8 +2,13 @@ package wxc.android.shellutil;
 
 
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Command {
+    public static final String CMD_TOKEN = "^@#*end*#@^";
+
+    private static final int MAX_WAIT_TIME = 30; // s
+
     /**
      * 命名的退出状态:
      * -2, 不能执行, 没有root权限
@@ -25,14 +30,14 @@ public class Command {
 
     public Command(String command) {
         mId = CommandIdGenerator.getId();
-        mCommand = command + "\necho " + ShellConst.CMD_TOKEN + " " + mId + " $?\n"; // ls -l\n echo cmd_id $?
+        mCommand = command + "\necho " + CMD_TOKEN + " " + mId + " $?\n"; // ls -l\n echo cmd_id $?
     }
 
     /**
      * 执行命令, 该操作是耗时操作, 请确保在非UI线程上执行
      */
     public void execute() {
-        execute(RootShell.getInstance(), ShellConst.MAX_WAIT_TIME);
+        execute(RootShell.getInstance(), MAX_WAIT_TIME);
     }
 
     /**
@@ -104,4 +109,12 @@ public class Command {
         return mMessageList;
     }
 
+    private static class CommandIdGenerator {
+
+        public static AtomicInteger sId = new AtomicInteger(0);
+
+        public static int getId() {
+            return sId.addAndGet(1);
+        }
+    }
 }
